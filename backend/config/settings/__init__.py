@@ -1,0 +1,1 @@
+# Default settings module package

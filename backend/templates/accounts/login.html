@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}Log In &bull; Circlo{% endblock %}
+
+{% block content %}
+<div class="auth-card-wrapper">
+    <div class="auth-card">
+        <div class="auth-brand">
+            <div class="brand-logo-large">
+                <svg width="40" height="40" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="16" cy="16" r="14" stroke="url(#paint0_linear_log)" stroke-width="4"/>
+                    <circle cx="16" cy="16" r="6" fill="url(#paint1_linear_log)"/>
+                    <defs>
+                        <linearGradient id="paint0_linear_log" x1="2" y1="2" x2="30" y2="30" gradientUnits="userSpaceOnUse">
+                            <stop stop-color="#8B5CF6"/>
+                            <stop stop-offset="0.5" stop-color="#EC4899"/>
+                            <stop stop-offset="1" stop-color="#F59E0B"/>
+                        </linearGradient>
+                        <linearGradient id="paint1_linear_log" x1="10" y1="10" x2="22" y2="22" gradientUnits="userSpaceOnUse">
+                            <stop stop-color="#8B5CF6"/>
+                            <stop stop-offset="1" stop-color="#EC4899"/>
+                        </linearGradient>
+                    </defs>
+                </svg>
+            </div>
+            <h2 class="auth-title">Log in to Circlo</h2>
+            <p class="auth-subtitle">Enter your email or username to continue.</p>
+        </div>
+
+        <form method="POST" action="{% url 'accounts-web:login' %}" class="auth-form">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ next|default:'' }}">
+
+            <div class="form-group">
+                <label for="identifier" class="form-label">Email or Username</label>
+                <input type="text" id="identifier" name="identifier" class="form-input" placeholder="Email or @username" value="{{ identifier|default:'' }}" required autofocus autocomplete="username">
+            </div>
+
+            <div class="form-group">
+                <div class="form-label-row">
+                    <label for="password" class="form-label">Password</label>
+                    <a href="{% url 'accounts-web:password-reset' %}" class="auth-forgot">Forgot password?</a>
+                </div>
+                <input type="password" id="password" name="password" class="form-input" placeholder="Your password" required autocomplete="current-password">
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-block">Log In</button>
+        </form>
+
+        <div class="auth-card-footer">
+            <span>Don't have an account?</span>
+            <a href="{% url 'accounts-web:register' %}" class="auth-link">Sign Up</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

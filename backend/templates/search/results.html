@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block title %}Search results for "{{ query }}" &bull; Circlo{% endblock %}
+
+{% block content %}
+<div class="search-page-container">
+    <!-- Search Bar -->
+    <div class="search-page-header">
+        <form method="GET" action="{% url 'search' %}" class="explore-search-bar">
+            <span class="search-icon">&#128269;</span>
+            <input type="text" name="q" class="search-input" value="{{ query }}" placeholder="Search accounts, #hashtags, and topics..." autocomplete="off" required>
+            <button type="submit" class="btn btn-primary btn-sm">Search</button>
+        </form>
+    </div>
+
+    {% if query %}
+    <div class="search-results-wrapper">
+        <h2 class="search-heading">Results for <span class="search-term">"{{ query }}"</span></h2>
+
+        <!-- People / Accounts Section -->
+        {% if results.users %}
+        <section class="search-section">
+            <h3 class="section-title">Accounts</h3>
+            <div class="search-users-list">
+                {% for user in results.users %}
+                <div class="search-user-row">
+                    <a href="{% url 'profile-view' identifier=user.username %}" class="search-user-info">
+                        <img src="{{ user.avatar_url }}" alt="{{ user.username }}" class="search-user-avatar">
+                        <div class="search-user-meta">
+                            <span class="search-user-handle">@{{ user.username }}</span>
+                            <span class="search-user-fullname">{{ user.full_name }}</span>
+                        </div>
+                    </a>
+                    {% if request.user != user and request.user.is_authenticated %}
+                    <form method="POST" action="{% url 'social-web:follow-toggle' pk=user.id %}" class="follow-form">
+                        {% csrf_token %}
+                        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                        <button type="submit" class="btn btn-primary btn-sm">Follow</button>
+                    </form>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
+
+        <!-- Hashtags Section -->
+        {% if results.hashtags %}
+        <section class="search-section">
+            <h3 class="section-title">Hashtags</h3>
+            <div class="search-hashtags-list">
+                {% for tag in results.hashtags %}
+                <a href="{% url 'search' %}?q=%23{{ tag.name }}" class="search-hashtag-pill">
+                    <span class="tag-hash">#</span>
+                    <span class="tag-name">{{ tag.name }}</span>
+                    <span class="tag-count">{{ tag.posts_count }} post{{ tag.posts_count|pluralize }}</span>
+                </a>
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
+
+        <!-- Posts Section -->
+        {% if results.posts %}
+        <section class="search-section">
+            <h3 class="section-title">Posts</h3>
+            <div class="explore-grid">
+                {% for post in results.posts %}
+                <a href="{% url 'post-detail-web' pk=post.id %}" class="explore-grid-item">
+                    {% if post.primary_media %}
+                        {% if post.primary_media.is_video %}
+                        <video src="{{ post.primary_media.file_url }}" class="explore-media" muted></video>
+                        <span class="grid-badge">&#9658;</span>
+                        {% else %}
+                        <img src="{{ post.primary_media.file_url }}" alt="Post image" class="explore-media" loading="lazy">
+                        {% endif %}
+                    {% else %}
+                    <div class="explore-placeholder">Circlo</div>
+                    {% endif %}
+
+                    <div class="explore-overlay">
+                        <span class="explore-stat">&#9829; {{ post.likes.count }}</span>
+                        <span class="explore-stat">&#128172; {{ post.comments.count }}</span>
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
+
+        {% if not results.users and not results.hashtags and not results.posts %}
+        <div class="posts-empty-state">
+            <div class="empty-icon">&#128269;</div>
+            <h3 class="empty-title">No Results Found</h3>
+            <p class="empty-subtitle">We couldn't find any accounts, hashtags, or posts matching "{{ query }}".</p>
+        </div>
+        {% endif %}
+    </div>
+    {% else %}
+    <div class="posts-empty-state">
+        <div class="empty-icon">&#128269;</div>
+        <h3 class="empty-title">Search Circlo</h3>
+        <p class="empty-subtitle">Search for friends, photographers, trending tags, or topics.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

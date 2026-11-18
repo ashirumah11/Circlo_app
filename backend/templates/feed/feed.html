@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+
+{% block title %}Feed &bull; Circlo{% endblock %}
+
+{% block content %}
+<div class="feed-layout">
+    <!-- Main Feed Stream -->
+    <div class="feed-stream">
+        <!-- Stories Tray -->
+        <div class="stories-tray">
+            {% if request.user.is_authenticated %}
+            <a href="{% url 'stories-web:story-create' %}" class="story-circle-wrapper self-story" title="Create a story">
+                <div class="story-avatar-ring add-story-ring">
+                    <img src="{{ request.user.avatar_url }}" alt="{{ request.user.username }}" class="story-avatar">
+                    <span class="story-add-badge">+</span>
+                </div>
+                <span class="story-username">Your story</span>
+            </a>
+            {% endif %}
+
+            {% for group in story_groups %}
+                {% if not group.is_self %}
+                <a href="{% url 'stories-web:story-viewer' username=group.author.username %}" class="story-circle-wrapper" title="View @{{ group.author.username }}'s story">
+                    <div class="story-avatar-ring {% if group.has_unviewed %}has-unviewed-ring{% else %}viewed-ring{% endif %}">
+                        <img src="{{ group.author.avatar_url }}" alt="{{ group.author.username }}" class="story-avatar">
+                    </div>
+                    <span class="story-username">{{ group.author.username }}</span>
+                </a>
+                {% endif %}
+            {% empty %}
+                {% for suggested in suggested_users %}
+                <a href="{% url 'profile-view' identifier=suggested.username %}" class="story-circle-wrapper" title="@{{ suggested.username }}">
+                    <div class="story-avatar-ring">
+                        <img src="{{ suggested.avatar_url }}" alt="{{ suggested.username }}" class="story-avatar">
+                    </div>
+                    <span class="story-username">{{ suggested.username }}</span>
+                </a>
+                {% endfor %}
+            {% endfor %}
+        </div>
+
+        <!-- Filter tabs: Following / Latest -->
+        <div class="feed-filter-bar">
+            <a href="?filter=following" class="feed-filter-btn {% if feed_filter == 'following' %}active{% endif %}">Following</a>
+            <a href="?filter=latest" class="feed-filter-btn {% if feed_filter == 'latest' %}active{% endif %}">Latest</a>
+        </div>
+
+        <!-- Posts List -->
+        {% if posts %}
+        <div class="posts-list">
+            {% for post in posts %}
+            <article class="post-card" id="post-{{ post.id }}">
+                <!-- Post Header -->
+                <header class="post-header">
+                    <a href="{% url 'profile-view' identifier=post.author.username %}" class="post-author-link">
+                        <img src="{{ post.author.avatar_url }}" alt="{{ post.author.username }}" class="post-author-avatar">
+                        <div class="post-author-meta">
+                            <span class="post-author-name">@{{ post.author.username }}</span>
+                            {% if post.location %}
+                            <span class="post-location">{{ post.location }}</span>
+                            {% endif %}
+                        </div>
+                    </a>
+
+                    <div class="post-header-actions">
+                        <span class="post-time">{{ post.created_at|timesince }} ago</span>
+                        {% if request.user == post.author %}
+                        <div class="dropdown">
+                            <a href="{% url 'post-edit-web' pk=post.id %}" class="icon-btn-small" title="Edit Post">&#9998;</a>
+                        </div>
+                        {% endif %}
+                    </div>
+                </header>
+
+                <!-- Post Media Carousel / Display -->
+                <div class="post-media-container">
+                    {% for item in post.media.all %}
+                        {% if item.is_video %}
+                        <video src="{{ item.file_url }}" controls class="post-media-item video-player" playsinline></video>
+                        {% else %}
+                        <img src="{{ item.file_url }}" alt="Post image" class="post-media-item" loading="lazy">
+                        {% endif %}
+                    {% empty %}
+                    <div class="post-media-placeholder">No media available</div>
+                    {% endfor %}
+                </div>
+
+                <!-- Post Actions Bar -->
+                <div class="post-actions-bar">
+                    <div class="actions-left">
+                        <!-- Like Button -->
+                        <form method="POST" action="{% url 'post-like-web' pk=post.id %}" class="like-form">
+                            {% csrf_token %}
+                            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                            <button type="submit" class="action-btn btn-like {% if post.id in liked_post_ids %}liked{% endif %}" title="Like">
+                                <span class="heart-icon">&#9829;</span>
+                            </button>
+                        </form>
+
+                        <!-- Comment Button -->
+                        <a href="{% url 'post-detail-web' pk=post.id %}#comments" class="action-btn" title="Comment">
+                            <span class="action-icon">&#128172;</span>
+                        </a>
+
+                        <!-- Share Button -->
+                        <button type="button" class="action-btn" onclick="navigator.clipboard.writeText(window.location.origin + '/posts/{{ post.id }}/'); alert('Post link copied to clipboard!');" title="Share link">
+                            <span class="action-icon">&#10150;</span>
+                        </button>
+                    </div>
+
+                    <!-- Bookmark Action -->
+                    <form method="POST" action="{% url 'bookmarks-web:toggle-bookmark' pk=post.id %}" class="bookmark-form">
+                        {% csrf_token %}
+                        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                        <button type="submit" class="action-btn {% if post.id in bookmarked_post_ids %}bookmarked active{% endif %}" title="{% if post.id in bookmarked_post_ids %}Remove from saved{% else %}Save post{% endif %}">
+                            <span class="action-icon">&#128278;</span>
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Likes Count -->
+                <div class="post-likes-info">
+                    <strong>{{ post.likes.count }} like{{ post.likes.count|pluralize }}</strong>
+                </div>
+
+                <!-- Post Caption & Hashtags -->
+                {% if post.caption %}
+                <div class="post-caption-block">
+                    <a href="{% url 'profile-view' identifier=post.author.username %}" class="caption-username">@{{ post.author.username }}</a>
+                    <span class="caption-text">{{ post.caption }}</span>
+                </div>
+                {% endif %}
+
+                <!-- Comments Summary -->
+                {% if post.comments.count > 0 %}
+                <div class="post-comments-summary">
+                    <a href="{% url 'post-detail-web' pk=post.id %}" class="view-comments-link">
+                        View all {{ post.comments.count }} comment{{ post.comments.count|pluralize }}
+                    </a>
+                </div>
+                {% endif %}
+
+                <!-- Inline Add Comment Input -->
+                {% if request.user.is_authenticated %}
+                <form method="POST" action="{% url 'post-comment-web' pk=post.id %}" class="inline-comment-form">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                    <input type="text" name="text" placeholder="Add a comment for @{{ post.author.username }}..." class="comment-input" required autocomplete="off">
+                    <button type="submit" class="comment-submit-btn">Post</button>
+                </form>
+                {% endif %}
+            </article>
+            {% endfor %}
+        </div>
+        {% else %}
+        <!-- Empty Feed State -->
+        <div class="feed-empty-card">
+            <div class="empty-icon">&#127775;</div>
+            <h2>Welcome to Circlo Feed</h2>
+            <p>Share your first photograph or follow creative accounts to fill your feed with authentic moments.</p>
+            {% if request.user.is_authenticated %}
+            <a href="{% url 'post-create-web' %}" class="btn btn-primary" style="margin-top: 1rem;">Create a Post</a>
+            {% else %}
+            <div class="quick-links" style="margin-top: 1rem; justify-content: center;">
+                <a href="{% url 'accounts-web:register' %}" class="btn btn-primary">Sign Up</a>
+                <a href="{% url 'accounts-web:login' %}" class="btn btn-secondary">Log In</a>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Right Sidebar Widget: Suggested Users -->
+    <aside class="feed-sidebar">
+        {% if request.user.is_authenticated %}
+        <div class="feed-user-badge">
+            <a href="{% url 'profile-me' %}" class="feed-user-link">
+                <img src="{{ request.user.avatar_url }}" alt="{{ request.user.username }}" class="feed-avatar">
+                <div class="feed-user-details">
+                    <span class="feed-username">@{{ request.user.username }}</span>
+                    <span class="feed-fullname">{{ request.user.full_name }}</span>
+                </div>
+            </a>
+            <a href="{% url 'accounts-web:logout' %}" class="switch-link">Log out</a>
+        </div>
+        {% endif %}
+
+        <div class="suggestions-card">
+            <div class="suggestions-header">
+                <span class="suggestions-title">Suggested for you</span>
+                <a href="/api/v1/profiles/" target="_blank" class="see-all-link">API</a>
+            </div>
+
+            <div class="suggestions-list">
+                {% for suggested in suggested_users %}
+                <div class="suggestion-item">
+                    <a href="{% url 'profile-view' identifier=suggested.username %}" class="suggestion-link">
+                        <img src="{{ suggested.avatar_url }}" alt="{{ suggested.username }}" class="suggestion-avatar">
+                        <div class="suggestion-meta">
+                            <span class="suggestion-handle">@{{ suggested.username }}</span>
+                            <span class="suggestion-sub">{{ suggested.full_name|truncatechars:18 }}</span>
+                        </div>
+                    </a>
+                    <a href="{% url 'profile-view' identifier=suggested.username %}" class="btn btn-outline btn-sm">View</a>
+                </div>
+                {% empty %}
+                <p class="text-muted" style="font-size: 0.85rem;">No suggested users available yet.</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="feed-footer-links">
+            <p>&copy; 2026 CIRCLO &bull; INSTAGRAM-INSPIRED SOCIAL MEDIA</p>
+        </div>
+    </aside>
+</div>
+{% endblock %}

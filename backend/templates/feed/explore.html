@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block title %}Explore &bull; Circlo{% endblock %}
+
+{% block content %}
+<div class="explore-container">
+    <!-- Explore Search Header -->
+    <div class="explore-header">
+        <form method="GET" action="{% url 'search' %}" class="explore-search-bar">
+            <span class="search-icon">&#128269;</span>
+            <input type="text" name="q" class="search-input" placeholder="Search accounts, #hashtags, and topics..." autocomplete="off" required>
+            <button type="submit" class="btn btn-primary btn-sm">Search</button>
+        </form>
+    </div>
+
+    <!-- Explore Grid -->
+    {% if posts %}
+    <div class="explore-grid">
+        {% for post in posts %}
+        <a href="{% url 'post-detail-web' pk=post.id %}" class="explore-grid-item">
+            {% if post.primary_media %}
+                {% if post.primary_media.is_video %}
+                <video src="{{ post.primary_media.file_url }}" class="explore-media" muted></video>
+                <span class="grid-badge">&#9658;</span>
+                {% else %}
+                <img src="{{ post.primary_media.file_url }}" alt="Explore item" class="explore-media" loading="lazy">
+                {% endif %}
+            {% else %}
+            <div class="explore-placeholder">Circlo</div>
+            {% endif %}
+
+            <div class="explore-overlay">
+                <span class="explore-stat">&#9829; {{ post.likes.count }}</span>
+                <span class="explore-stat">&#128172; {{ post.comments.count }}</span>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="posts-empty-state">
+        <div class="empty-icon">&#127757;</div>
+        <h3 class="empty-title">Discover Circlo</h3>
+        <p class="empty-subtitle">Trending posts and popular moments from public circles will appear here.</p>
+        <a href="{% url 'post-create-direct' %}" class="btn btn-primary btn-sm">Create the first post</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

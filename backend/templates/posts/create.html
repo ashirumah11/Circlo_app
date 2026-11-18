@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}Create New Post &bull; Circlo{% endblock %}
+
+{% block content %}
+<div class="create-post-wrapper">
+    <div class="create-post-card">
+        <header class="create-post-header">
+            <h1 class="create-title">Create new post</h1>
+        </header>
+
+        <form method="POST" action="{% url 'post-create-web' %}" enctype="multipart/form-data" class="create-post-form">
+            {% csrf_token %}
+
+            <!-- Media Upload Dropzone -->
+            <div class="media-upload-area" id="drop-area">
+                <input type="file" id="media-files" name="media" multiple accept="image/*,video/*" class="file-input-hidden" required>
+                <div class="upload-placeholder" id="upload-placeholder">
+                    <div class="upload-icon">&#128248;</div>
+                    <h3>Drag photos and videos here</h3>
+                    <p class="upload-hint">Upload up to 10 files (JPG, PNG, WEBP, MP4, MOV - max 50MB each)</p>
+                    <label for="media-files" class="btn btn-primary btn-sm">Select from computer</label>
+                </div>
+
+                <!-- Preview container -->
+                <div class="media-preview-grid" id="preview-grid" style="display: none;"></div>
+            </div>
+
+            <!-- Post Details -->
+            <div class="create-post-details">
+                <div class="creator-badge">
+                    <img src="{{ request.user.avatar_url }}" alt="{{ request.user.username }}" class="creator-avatar">
+                    <span class="creator-name">@{{ request.user.username }}</span>
+                </div>
+
+                <div class="form-group">
+                    <label for="caption" class="form-label">Write a caption</label>
+                    <textarea id="caption" name="caption" rows="4" class="form-textarea" placeholder="Write a caption... (e.g. Exploring the coast #photography #sunset)">{{ caption|default:'' }}</textarea>
+                    <span class="form-help">Add hashtags like #art or #travel to help people discover your post.</span>
+                </div>
+
+                <div class="form-group">
+                    <label for="location" class="form-label">Add Location</label>
+                    <input type="text" id="location" name="location" class="form-input" placeholder="e.g. Brooklyn, NY" value="{{ location|default:'' }}">
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary btn-block">Share Post</button>
+                    <a href="{% url 'home' %}" class="btn btn-outline btn-block">Cancel</a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const fileInput = document.getElementById('media-files');
+    const placeholder = document.getElementById('upload-placeholder');
+    const previewGrid = document.getElementById('preview-grid');
+
+    if (fileInput) {
+        fileInput.addEventListener('change', function(e) {
+            const files = Array.from(e.target.files);
+            if (files.length > 0) {
+                placeholder.style.display = 'none';
+                previewGrid.style.display = 'grid';
+                previewGrid.innerHTML = '';
+
+                files.forEach(file => {
+                    const reader = new FileReader();
+                    const isVid = file.type.startsWith('video/');
+
+                    reader.onload = function(evt) {
+                        const thumb = document.createElement('div');
+                        thumb.className = 'preview-thumbnail';
+                        if (isVid) {
+                            thumb.innerHTML = `<video src="${evt.target.result}" class="thumb-media" muted></video><span class="video-badge">&#9658;</span>`;
+                        } else {
+                            thumb.innerHTML = `<img src="${evt.target.result}" class="thumb-media">`;
+                        }
+                        previewGrid.appendChild(thumb);
+                    };
+                    reader.readAsDataURL(file);
+                });
+            }
+        });
+    }
+</script>
+{% endblock %}

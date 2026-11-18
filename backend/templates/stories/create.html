@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block title %}Share a Story &bull; Circlo{% endblock %}
+
+{% block content %}
+<div class="create-post-wrapper">
+    <div class="create-post-card">
+        <header class="create-post-header">
+            <h1 class="create-title">Share a Story</h1>
+        </header>
+
+        <form method="POST" action="{% url 'stories-web:story-create' %}" enctype="multipart/form-data" class="create-post-form">
+            {% csrf_token %}
+
+            <!-- Media Upload Area -->
+            <div class="media-upload-area" id="story-drop-area">
+                <input type="file" id="story-media" name="media" accept="image/*,video/*" class="file-input-hidden" required>
+                <div class="upload-placeholder" id="upload-placeholder">
+                    <div class="upload-icon">&#128248;</div>
+                    <h3>Drag a photo or video here</h3>
+                    <p class="upload-hint">Upload JPG, PNG, WEBP, MP4, MOV (max 50MB). Stories expire automatically after 24 hours.</p>
+                    <label for="story-media" class="btn btn-primary btn-sm">Select from computer</label>
+                </div>
+
+                <!-- Preview container -->
+                <div class="story-preview-wrapper" id="story-preview" style="display: none;"></div>
+            </div>
+
+            <!-- Story Details -->
+            <div class="create-post-details">
+                <div class="creator-badge">
+                    <img src="{{ request.user.avatar_url }}" alt="{{ request.user.username }}" class="creator-avatar">
+                    <span class="creator-name">@{{ request.user.username }}</span>
+                </div>
+
+                <div class="form-group">
+                    <label for="caption" class="form-label">Add a caption (optional)</label>
+                    <textarea id="caption" name="caption" rows="3" maxlength="255" class="form-textarea" placeholder="Add a caption to your story...">{{ caption|default:'' }}</textarea>
+                    <span class="form-help">Max 255 characters. Your story will be visible to your circles for 24 hours.</span>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary btn-block">Share Story</button>
+                    <a href="{% url 'feed' %}" class="btn btn-outline btn-block">Cancel</a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const fileInput = document.getElementById('story-media');
+    const placeholder = document.getElementById('upload-placeholder');
+    const previewWrapper = document.getElementById('story-preview');
+
+    if (fileInput) {
+        fileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                placeholder.style.display = 'none';
+                previewWrapper.style.display = 'flex';
+                previewWrapper.innerHTML = '';
+
+                const reader = new FileReader();
+                const isVid = file.type.startsWith('video/');
+
+                reader.onload = function(evt) {
+                    if (isVid) {
+                        previewWrapper.innerHTML = `<video src="${evt.target.result}" controls autoplay muted class="story-preview-media"></video>`;
+                    } else {
+                        previewWrapper.innerHTML = `<img src="${evt.target.result}" alt="Story Preview" class="story-preview-media">`;
+                    }
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    }
+</script>
+{% endblock %}

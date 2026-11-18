@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}Follow Requests &bull; Circlo{% endblock %}
+
+{% block content %}
+<div class="requests-container">
+    <div class="requests-card">
+        <header class="requests-header">
+            <h1 class="requests-title">Follow Requests</h1>
+            <p class="requests-subtitle">Approve or ignore requests to follow your private circle.</p>
+        </header>
+
+        {% if requests %}
+        <div class="requests-list">
+            {% for req in requests %}
+            <div class="request-row">
+                <a href="{% url 'profile-view' identifier=req.follower.username %}" class="request-user-info">
+                    <img src="{{ req.follower.avatar_url }}" alt="{{ req.follower.username }}" class="request-avatar">
+                    <div class="request-meta">
+                        <span class="request-handle">@{{ req.follower.username }}</span>
+                        <span class="request-fullname">{{ req.follower.full_name }}</span>
+                        <span class="request-time">{{ req.created_at|timesince }} ago</span>
+                    </div>
+                </a>
+
+                <div class="request-actions">
+                    <form method="POST" action="{% url 'social-web:follow-request-action' pk=req.id %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="accept">
+                        <button type="submit" class="btn btn-primary btn-sm">Confirm</button>
+                    </form>
+                    <form method="POST" action="{% url 'social-web:follow-request-action' pk=req.id %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="reject">
+                        <button type="submit" class="btn btn-outline btn-sm">Delete</button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="posts-empty-state">
+            <div class="empty-icon">&#128101;</div>
+            <h3 class="empty-title">No Follow Requests</h3>
+            <p class="empty-subtitle">When people request to follow your private account, they'll show up here.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

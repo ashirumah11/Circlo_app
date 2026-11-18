@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}Sign Up &bull; Circlo{% endblock %}
+
+{% block content %}
+<div class="auth-card-wrapper">
+    <div class="auth-card">
+        <div class="auth-brand">
+            <div class="brand-logo-large">
+                <svg width="40" height="40" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="16" cy="16" r="14" stroke="url(#paint0_linear_reg)" stroke-width="4"/>
+                    <circle cx="16" cy="16" r="6" fill="url(#paint1_linear_reg)"/>
+                    <defs>
+                        <linearGradient id="paint0_linear_reg" x1="2" y1="2" x2="30" y2="30" gradientUnits="userSpaceOnUse">
+                            <stop stop-color="#8B5CF6"/>
+                            <stop stop-offset="0.5" stop-color="#EC4899"/>
+                            <stop stop-offset="1" stop-color="#F59E0B"/>
+                        </linearGradient>
+                        <linearGradient id="paint1_linear_reg" x1="10" y1="10" x2="22" y2="22" gradientUnits="userSpaceOnUse">
+                            <stop stop-color="#8B5CF6"/>
+                            <stop stop-offset="1" stop-color="#EC4899"/>
+                        </linearGradient>
+                    </defs>
+                </svg>
+            </div>
+            <h2 class="auth-title">Create your Circlo account</h2>
+            <p class="auth-subtitle">Sign up to see photos, videos and stories from your circles.</p>
+        </div>
+
+        <form method="POST" action="{% url 'accounts-web:register' %}" class="auth-form" novalidate>
+            {% csrf_token %}
+
+            <div class="form-group">
+                <label for="email" class="form-label">Email address</label>
+                <input type="email" id="email" name="email" class="form-input" placeholder="you@example.com" value="{{ email|default:'' }}" required autocomplete="email">
+            </div>
+
+            <div class="form-group">
+                <label for="full_name" class="form-label">Full name</label>
+                <input type="text" id="full_name" name="full_name" class="form-input" placeholder="Alex Morgan" value="{{ full_name|default:'' }}" required autocomplete="name">
+            </div>
+
+            <div class="form-group">
+                <label for="username" class="form-label">Username</label>
+                <input type="text" id="username" name="username" class="form-input" placeholder="alexmorgan" value="{{ username|default:'' }}" required autocomplete="username">
+                <span class="form-help">Letters, numbers, underscores and periods.</span>
+            </div>
+
+            <div class="form-group">
+                <label for="password" class="form-label">Password</label>
+                <input type="password" id="password" name="password" class="form-input" placeholder="At least 8 characters" required autocomplete="new-password">
+            </div>
+
+            <div class="form-group">
+                <label for="password_confirm" class="form-label">Confirm password</label>
+                <input type="password" id="password_confirm" name="password_confirm" class="form-input" placeholder="Repeat your password" required autocomplete="new-password">
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-block">Sign Up</button>
+        </form>
+
+        <div class="auth-card-footer">
+            <span>Have an account?</span>
+            <a href="{% url 'accounts-web:login' %}" class="auth-link">Log In</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

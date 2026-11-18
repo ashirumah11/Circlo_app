@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block title %}Saved Posts &bull; Circlo{% endblock %}
+
+{% block content %}
+<div class="saved-page-container">
+    <header class="saved-header">
+        <h1 class="saved-title">&#128278; Saved Posts</h1>
+        <p class="saved-subtitle">Only you can see posts you've saved.</p>
+    </header>
+
+    {% if posts %}
+    <div class="explore-grid">
+        {% for post in posts %}
+        <a href="{% url 'post-detail-web' pk=post.id %}" class="explore-grid-item">
+            {% if post.primary_media %}
+                {% if post.primary_media.is_video %}
+                <video src="{{ post.primary_media.file_url }}" class="explore-media" muted></video>
+                <span class="grid-badge">&#9658;</span>
+                {% else %}
+                <img src="{{ post.primary_media.file_url }}" alt="Saved post" class="explore-media" loading="lazy">
+                {% endif %}
+            {% else %}
+            <div class="explore-placeholder">Circlo</div>
+            {% endif %}
+
+            <div class="explore-overlay">
+                <span class="explore-stat">&#9829; {{ post.likes.count }}</span>
+                <span class="explore-stat">&#128172; {{ post.comments.count }}</span>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="posts-empty-state">
+        <div class="empty-icon">&#128278;</div>
+        <h3 class="empty-title">Save Photos and Videos</h3>
+        <p class="empty-subtitle">Save posts to your private collection by tapping the bookmark icon under any post.</p>
+        <a href="{% url 'explore' %}" class="btn btn-primary btn-sm">Explore Trending Posts</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

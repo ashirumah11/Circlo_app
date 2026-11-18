@@ -1,0 +1,107 @@
+<aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+        <a href="/" class="brand-link">
+            <div class="brand-logo">
+                <svg width="28" height="28" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="16" cy="16" r="14" stroke="url(#paint0_linear)" stroke-width="4"/>
+                    <circle cx="16" cy="16" r="6" fill="url(#paint1_linear)"/>
+                    <defs>
+                        <linearGradient id="paint0_linear" x1="2" y1="2" x2="30" y2="30" gradientUnits="userSpaceOnUse">
+                            <stop stop-color="#8B5CF6"/>
+                            <stop stop-offset="0.5" stop-color="#EC4899"/>
+                            <stop stop-offset="1" stop-color="#F59E0B"/>
+                        </linearGradient>
+                        <linearGradient id="paint1_linear" x1="10" y1="10" x2="22" y2="22" gradientUnits="userSpaceOnUse">
+                            <stop stop-color="#8B5CF6"/>
+                            <stop stop-offset="1" stop-color="#EC4899"/>
+                        </linearGradient>
+                    </defs>
+                </svg>
+            </div>
+            <span class="brand-name">Circlo</span>
+        </a>
+    </div>
+
+    <nav class="sidebar-nav">
+        <a href="/" class="nav-item {% if request.path == '/' or request.path == '/feed/' %}active{% endif %}">
+            <span class="nav-icon">&#8962;</span>
+            <span class="nav-label">Home</span>
+        </a>
+        <a href="{% url 'search' %}" class="nav-item {% if '/search/' in request.path %}active{% endif %}">
+            <span class="nav-icon">&#128269;</span>
+            <span class="nav-label">Search</span>
+        </a>
+        <a href="{% url 'explore' %}" class="nav-item {% if '/explore/' in request.path %}active{% endif %}">
+            <span class="nav-icon">&#127757;</span>
+            <span class="nav-label">Explore</span>
+        </a>
+
+        {% if request.user.is_authenticated %}
+        <a href="{% url 'post-create-web' %}" class="nav-item {% if request.path == '/posts/create/' or request.path == '/create/' %}active{% endif %}">
+            <span class="nav-icon">&#10010;</span>
+            <span class="nav-label">Create</span>
+        </a>
+        <a href="{% url 'bookmarks-web:saved-posts' %}" class="nav-item {% if '/bookmarks/' in request.path %}active{% endif %}">
+            <span class="nav-icon">&#128278;</span>
+            <span class="nav-label">Saved</span>
+        </a>
+        <a href="{% url 'profile-me' %}" class="nav-item {% if '/profile/' in request.path or '@' in request.path %}active{% endif %}">
+            <span class="nav-icon">&#128100;</span>
+            <span class="nav-label">Profile</span>
+        </a>
+        <a href="{% url 'profile-edit' %}" class="nav-item {% if request.path == '/profile/edit/' %}active{% endif %}">
+            <span class="nav-icon">&#9998;</span>
+            <span class="nav-label">Edit Profile</span>
+        </a>
+        <a href="{% url 'social-web:follow-requests' %}" class="nav-item {% if '/social/requests/' in request.path %}active{% endif %}">
+            <span class="nav-icon">&#128101;</span>
+            <span class="nav-label">Requests</span>
+        </a>
+        {% else %}
+        <a href="{% url 'accounts-web:login' %}" class="nav-item {% if '/auth/login/' in request.path %}active{% endif %}">
+            <span class="nav-icon">&#128272;</span>
+            <span class="nav-label">Log In</span>
+        </a>
+        <a href="{% url 'accounts-web:register' %}" class="nav-item {% if '/auth/register/' in request.path %}active{% endif %}">
+            <span class="nav-icon">&#10010;</span>
+            <span class="nav-label">Sign Up</span>
+        </a>
+        {% endif %}
+
+        <a href="/api/v1/docs/" class="nav-item" target="_blank">
+            <span class="nav-icon">&#9776;</span>
+            <span class="nav-label">API Docs</span>
+        </a>
+        <a href="/health/" class="nav-item" target="_blank">
+            <span class="nav-icon">&#9829;</span>
+            <span class="nav-label">Health</span>
+        </a>
+        <a href="/admin/" class="nav-item" target="_blank">
+            <span class="nav-icon">&#9881;</span>
+            <span class="nav-label">Admin</span>
+        </a>
+    </nav>
+
+    <div class="sidebar-footer">
+        {% if request.user.is_authenticated %}
+        <div class="user-pill">
+            <a href="{% url 'profile-me' %}" class="user-pill-link">
+                <img src="{{ request.user.avatar_url }}" alt="{{ request.user.username }}" class="user-pill-avatar">
+                <div class="user-pill-info">
+                    <span class="user-pill-name">{{ request.user.full_name }}</span>
+                    <span class="user-pill-handle">@{{ request.user.username }}</span>
+                </div>
+            </a>
+            <a href="{% url 'accounts-web:logout' %}" class="btn-logout-icon" title="Logout">&#8618;</a>
+        </div>
+        {% endif %}
+
+        <div class="theme-toggle" id="theme-toggle" title="Toggle Theme">
+            <button type="button" class="btn-theme" aria-label="Toggle dark/light mode">
+                <span class="theme-icon">&#9788;</span>
+                <span class="theme-label">Theme</span>
+            </button>
+        </div>
+        <div class="version-tag">Circlo v1.0.0-phase2</div>
+    </div>
+</aside>

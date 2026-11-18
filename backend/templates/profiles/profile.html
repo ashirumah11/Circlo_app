@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+
+{% block title %}{{ profile_user.full_name }} (@{{ profile_user.username }}) &bull; Circlo{% endblock %}
+
+{% block content %}
+<div class="profile-container">
+    <!-- Profile Header -->
+    <header class="profile-header">
+        <div class="profile-avatar-wrapper">
+            <div class="profile-avatar-circle">
+                <img src="{{ profile_user.avatar_url }}" alt="{{ profile_user.username }}" class="profile-avatar-img">
+            </div>
+        </div>
+
+        <div class="profile-info-section">
+            <div class="profile-top-row">
+                <h1 class="profile-username">@{{ profile_user.username }}</h1>
+                {% if profile_user.is_email_verified %}
+                <span class="verified-badge" title="Verified">&#10004;</span>
+                {% endif %}
+
+                <div class="profile-actions">
+                    {% if is_self %}
+                    <a href="{% url 'profile-edit' %}" class="btn btn-secondary btn-sm">Edit Profile</a>
+                    <a href="{% url 'accounts-web:password-change' %}" class="btn btn-outline btn-sm">Password</a>
+                    <a href="{% url 'accounts-web:logout' %}" class="btn btn-outline btn-sm">Logout</a>
+                    {% else %}
+                    <form method="POST" action="{% url 'social-web:follow-toggle' pk=profile_user.id %}" class="follow-form">
+                        {% csrf_token %}
+                        {% if follow_status == 'following' %}
+                        <button type="submit" class="btn btn-secondary btn-sm" id="btn-follow">Following</button>
+                        {% elif follow_status == 'requested' %}
+                        <button type="submit" class="btn btn-secondary btn-sm" id="btn-follow">Requested</button>
+                        {% else %}
+                        <button type="submit" class="btn btn-primary btn-sm" id="btn-follow">Follow</button>
+                        {% endif %}
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Stats Bar -->
+            <div class="profile-stats">
+                <div class="stat-item">
+                    <span class="stat-number">{{ posts_count }}</span>
+                    <span class="stat-label">posts</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">{{ followers_count }}</span>
+                    <span class="stat-label">followers</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">{{ following_count }}</span>
+                    <span class="stat-label">following</span>
+                </div>
+            </div>
+
+            <!-- Bio & Details -->
+            <div class="profile-bio-block">
+                <h2 class="profile-full-name">{{ profile_user.full_name }}</h2>
+                {% if profile_user.bio %}
+                <p class="profile-bio-text">{{ profile_user.bio|linebreaksbr }}</p>
+                {% endif %}
+
+                <div class="profile-meta-row">
+                    {% if profile_user.location %}
+                    <span class="meta-item location-meta">
+                        <span class="meta-icon">&#128205;</span> {{ profile_user.location }}
+                    </span>
+                    {% endif %}
+
+                    {% if profile_user.website %}
+                    <a href="{{ profile_user.website }}" target="_blank" rel="noopener noreferrer" class="meta-item website-meta">
+                        <span class="meta-icon">&#128279;</span> {{ profile_user.website }}
+                    </a>
+                    {% endif %}
+
+                    <span class="meta-item joined-meta">
+                        <span class="meta-icon">&#128197;</span> Joined {{ profile_user.date_joined|date:"F Y" }}
+                    </span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Profile Tabs -->
+    <div class="profile-tabs">
+        <button class="profile-tab active" id="tab-btn-posts" onclick="switchProfileTab('posts')">
+            <span class="tab-icon">&#9638;</span> POSTS
+        </button>
+        {% if is_self %}
+        <button class="profile-tab" id="tab-btn-saved" onclick="switchProfileTab('saved')">
+            <span class="tab-icon">&#128278;</span> SAVED
+        </button>
+        {% endif %}
+    </div>
+
+    <!-- Posts Content -->
+    <div class="profile-tab-content" id="tab-posts-content">
+        {% if profile_user.is_private and not is_self and not is_following %}
+        <div class="private-account-notice">
+            <div class="private-icon">&#128274;</div>
+            <h3 class="private-title">This Account is Private</h3>
+            <p class="private-subtitle">Follow @{{ profile_user.username }} to see their photos, videos and stories.</p>
+        </div>
+        {% elif profile_user.posts.all %}
+        <div class="profile-posts-grid">
+            {% for post in profile_user.posts.all %}
+            <a href="{% url 'post-detail-web' pk=post.id %}" class="grid-post-card">
+                {% if post.primary_media %}
+                    {% if post.primary_media.is_video %}
+                    <video src="{{ post.primary_media.file_url }}" class="grid-post-media" muted></video>
+                    <span class="grid-badge">&#9658;</span>
+                    {% else %}
+                    <img src="{{ post.primary_media.file_url }}" alt="Post" class="grid-post-media" loading="lazy">
+                    {% endif %}
+                {% endif %}
+                <div class="grid-post-overlay">
+                    <span class="overlay-stat">&#9829; {{ post.likes.count }}</span>
+                    <span class="overlay-stat">&#128172; {{ post.comments.count }}</span>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="posts-empty-state">
+            <div class="empty-icon">&#128247;</div>
+            <h3 class="empty-title">No Posts Yet</h3>
+            <p class="empty-subtitle">
+                {% if is_self %}
+                When you share photos and videos, they will appear on your profile.
+                {% else %}
+                When @{{ profile_user.username }} posts, you'll see them here.
+                {% endif %}
+            </p>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if is_self %}
+    <!-- Saved Posts Tab Content -->
+    <div class="profile-tab-content" id="tab-saved-content" style="display: none;">
+        {% if saved_posts %}
+        <div class="profile-posts-grid">
+            {% for post in saved_posts %}
+            <a href="{% url 'post-detail-web' pk=post.id %}" class="grid-post-card">
+                {% if post.primary_media %}
+                    {% if post.primary_media.is_video %}
+                    <video src="{{ post.primary_media.file_url }}" class="grid-post-media" muted></video>
+                    <span class="grid-badge">&#9658;</span>
+                    {% else %}
+                    <img src="{{ post.primary_media.file_url }}" alt="Saved Post" class="grid-post-media" loading="lazy">
+                    {% endif %}
+                {% endif %}
+                <div class="grid-post-overlay">
+                    <span class="overlay-stat">&#9829; {{ post.likes.count }}</span>
+                    <span class="overlay-stat">&#128172; {{ post.comments.count }}</span>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="posts-empty-state">
+            <div class="empty-icon">&#128278;</div>
+            <h3 class="empty-title">Save Posts</h3>
+            <p class="empty-subtitle">Save photos and videos that you want to see again. No one is notified, and only you can see what you've saved.</p>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function switchProfileTab(tab) {
+        const postsBtn = document.getElementById('tab-btn-posts');
+        const savedBtn = document.getElementById('tab-btn-saved');
+        const postsContent = document.getElementById('tab-posts-content');
+        const savedContent = document.getElementById('tab-saved-content');
+
+        if (tab === 'posts') {
+            if (postsBtn) postsBtn.classList.add('active');
+            if (savedBtn) savedBtn.classList.remove('active');
+            if (postsContent) postsContent.style.display = 'block';
+            if (savedContent) savedContent.style.display = 'none';
+        } else if (tab === 'saved') {
+            if (savedBtn) savedBtn.classList.add('active');
+            if (postsBtn) postsBtn.classList.remove('active');
+            if (postsContent) postsContent.style.display = 'none';
+            if (savedContent) savedContent.style.display = 'block';
+        }
+    }
+</script>
+{% endblock %}
