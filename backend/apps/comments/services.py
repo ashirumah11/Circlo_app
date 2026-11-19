@@ -36,6 +36,30 @@ class CommentService:
             parent=parent,
             text=clean_text
         )
+
+        try:
+            from apps.notifications.services import NotificationService
+            if parent and parent.user != user:
+                NotificationService.create_notification(
+                    recipient=parent.user,
+                    actor=user,
+                    verb='reply',
+                    text=f"replied: {clean_text[:50]}",
+                    target_id=post.id,
+                    target_url=f"/posts/{post.id}/"
+                )
+            if post.author != user and (not parent or post.author != parent.user):
+                NotificationService.create_notification(
+                    recipient=post.author,
+                    actor=user,
+                    verb='comment',
+                    text=f"commented: {clean_text[:50]}",
+                    target_id=post.id,
+                    target_url=f"/posts/{post.id}/"
+                )
+        except Exception:
+            pass
+
         return comment
 
     @staticmethod
@@ -53,4 +77,16 @@ class CommentService:
             return False, comment.likes.count()
         else:
             CommentLike.objects.create(comment=comment, user=user)
+            try:
+                from apps.notifications.services import NotificationService
+                NotificationService.create_notification(
+                    recipient=comment.user,
+                    actor=user,
+                    verb='like_comment',
+                    text='liked your comment.',
+                    target_id=comment.post.id,
+                    target_url=f"/posts/{comment.post.id}/"
+                )
+            except Exception:
+                pass
             return True, comment.likes.count()

@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+
+{% block title %}Notifications &bull; Circlo{% endblock %}
+
+{% block content %}
+<div class="notifications-container">
+    <div class="notifications-header">
+        <div class="header-left">
+            <h1 class="page-title">Notifications</h1>
+            {% if unread_count > 0 %}
+            <span class="unread-pill" id="unread-count-pill">{{ unread_count }} new</span>
+            {% endif %}
+        </div>
+
+        <div class="header-actions">
+            {% if unread_count > 0 %}
+            <form method="POST" action="{% url 'notifications_web:notifications-list' %}">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="mark_all_read">
+                <button type="submit" class="btn btn-secondary btn-sm" id="btn-mark-all-read">Mark all as read</button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Filter Tabs -->
+    <div class="notifications-tabs">
+        <a href="{% url 'notifications_web:notifications-list' %}" class="tab-btn {% if filter_type != 'unread' %}active{% endif %}">
+            All
+        </a>
+        <a href="{% url 'notifications_web:notifications-list' %}?filter=unread" class="tab-btn {% if filter_type == 'unread' %}active{% endif %}">
+            Unread
+        </a>
+    </div>
+
+    <!-- Notifications List -->
+    <div class="notifications-list" id="notifications-list">
+        {% for note in notifications %}
+        <div class="notification-item {% if not note.is_read %}unread{% endif %}" data-notification-id="{{ note.id }}">
+            <a href="{% url 'profile-view' identifier=note.actor.username %}" class="notification-actor-link">
+                <img src="{{ note.actor.avatar_url }}" alt="{{ note.actor.username }}" class="notification-avatar">
+            </a>
+
+            <div class="notification-body">
+                <div class="notification-content">
+                    <a href="{% url 'profile-view' identifier=note.actor.username %}" class="actor-handle">
+                        @{{ note.actor.username }}
+                    </a>
+                    <span class="notification-verb">
+                        {% if note.verb == 'like_post' %}
+                            liked your post.
+                        {% elif note.verb == 'like_comment' %}
+                            liked your comment.
+                        {% elif note.verb == 'comment' %}
+                            commented on your post: <span class="snippet">"{{ note.text }}"</span>
+                        {% elif note.verb == 'reply' %}
+                            replied to your comment: <span class="snippet">"{{ note.text }}"</span>
+                        {% elif note.verb == 'follow' %}
+                            started following you.
+                        {% elif note.verb == 'follow_request' %}
+                            requested to follow you.
+                        {% elif note.verb == 'message' %}
+                            sent you a message: <span class="snippet">"{{ note.text }}"</span>
+                        {% else %}
+                            {{ note.text|default:"interacted with your content." }}
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="notification-meta">
+                    <span class="notification-time">{{ note.created_at|timesince }} ago</span>
+                </div>
+            </div>
+
+            <div class="notification-action">
+                {% if note.target_url %}
+                <a href="{{ note.target_url }}" class="btn btn-outline btn-sm notification-view-btn" onclick="markNotificationRead({{ note.id }})">View</a>
+                {% endif %}
+                {% if not note.is_read %}
+                <span class="unread-dot" title="Unread"></span>
+                {% endif %}
+            </div>
+        </div>
+        {% empty %}
+        <div class="empty-state">
+            <div class="empty-icon">&#128276;</div>
+            <h3>No notifications yet</h3>
+            <p>When someone likes your posts, comments, follows you, or messages you, you'll see it here.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<script>
+async function markNotificationRead(notificationId) {
+    try {
+        await fetch(`/api/v1/notifications/${notificationId}/`, {
+            method: 'PATCH',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        });
+    } catch (e) {
+        // Silently continue navigation
+    }
+}
+
+// Live WebSocket connection for notifications
+document.addEventListener('DOMContentLoaded', () => {
+    const list = document.getElementById('notifications-list');
+    const wsScheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
+    const wsUrl = `${wsScheme}://${window.location.host}/ws/notifications/`;
+
+    try {
+        const socket = new WebSocket(wsUrl);
+
+        socket.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (data.type === 'notification' && data.notification) {
+                const note = data.notification;
+                const item = document.createElement('div');
+                item.className = 'notification-item unread';
+                item.setAttribute('data-notification-id', note.id);
+
+                const avatarUrl = (note.actor && note.actor.avatar_url) ? note.actor.avatar_url : '/static/img/default-avatar.svg';
+                const actorUsername = note.actor ? note.actor.username : 'User';
+
+                let verbText = note.text || 'interacted with your profile.';
+                if (note.verb === 'like_post') verbText = 'liked your post.';
+                else if (note.verb === 'follow') verbText = 'started following you.';
+                else if (note.verb === 'comment') verbText = `commented: "${note.text}"`;
+
+                item.innerHTML = `
+                    <a href="/@${actorUsername}/" class="notification-actor-link">
+                        <img src="${avatarUrl}" alt="${actorUsername}" class="notification-avatar">
+                    </a>
+                    <div class="notification-body">
+                        <div class="notification-content">
+                            <a href="/@${actorUsername}/" class="actor-handle">@${actorUsername}</a>
+                            <span class="notification-verb">${verbText}</span>
+                        </div>
+                        <div class="notification-meta">
+                            <span class="notification-time">just now</span>
+                        </div>
+                    </div>
+                    <div class="notification-action">
+                        ${note.target_url ? `<a href="${note.target_url}" class="btn btn-outline btn-sm notification-view-btn" onclick="markNotificationRead(${note.id})">View</a>` : ''}
+                        <span class="unread-dot" title="Unread"></span>
+                    </div>
+                `;
+
+                // Prepend to top of list
+                list.insertBefore(item, list.firstChild);
+
+                // Increment badge pill
+                const pill = document.getElementById('unread-count-pill');
+                if (pill) {
+                    const current = parseInt(pill.textContent) || 0;
+                    pill.textContent = `${current + 1} new`;
+                }
+            }
+        };
+    } catch (err) {
+        console.error('Notification WebSocket connection error', err);
+    }
+});
+</script>
+{% endblock %}

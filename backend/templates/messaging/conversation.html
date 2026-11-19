@@ -1,0 +1,312 @@
+{% extends "base.html" %}
+
+{% block title %}Chat with @{{ other_user.username }} &bull; Circlo{% endblock %}
+
+{% block content %}
+<div class="chat-view-container">
+    <div class="chat-card">
+        <!-- Chat Header -->
+        <div class="chat-header">
+            <a href="{% url 'messaging_web:inbox' %}" class="chat-back-btn" title="Back to Inbox">&#8592;</a>
+            <a href="{% url 'profile-view' identifier=other_user.username %}" class="chat-partner-info">
+                <img src="{{ other_user.avatar_url }}" alt="{{ other_user.username }}" class="chat-avatar">
+                <div class="chat-meta">
+                    <span class="chat-partner-name">{{ other_user.full_name }}</span>
+                    <span class="chat-partner-handle">@{{ other_user.username }}</span>
+                </div>
+            </a>
+            <div class="chat-status" id="chat-status-pill">
+                <span class="status-dot"></span>
+                <span class="status-label" id="status-text">Connected</span>
+            </div>
+        </div>
+
+        <!-- Messages Container -->
+        <div class="chat-messages" id="chat-messages-container">
+            {% for msg in messages_list %}
+            <div class="chat-bubble-wrapper {% if msg.sender == request.user %}chat-bubble-outgoing{% else %}chat-bubble-incoming{% endif %}" data-message-id="{{ msg.id }}">
+                <div class="chat-bubble">
+                    {% if msg.image %}
+                    <div class="chat-image-wrap">
+                        <img src="{{ msg.image_url }}" alt="Attachment" class="chat-attached-image" loading="lazy">
+                    </div>
+                    {% endif %}
+                    {% if msg.text %}
+                    <p class="chat-text">{{ msg.text }}</p>
+                    {% endif %}
+                    <div class="chat-bubble-meta">
+                        <span class="chat-time">{{ msg.created_at|date:"g:i A" }}</span>
+                        {% if msg.sender == request.user %}
+                        <span class="chat-receipt {% if msg.is_read %}is-read{% endif %}" title="{% if msg.is_read %}Read{% else %}Sent{% endif %}">
+                            &#10003;{% if msg.is_read %}&#10003;{% endif %}
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="chat-empty-intro" id="chat-empty-intro">
+                <img src="{{ other_user.avatar_url }}" alt="{{ other_user.username }}" class="chat-intro-avatar">
+                <h4>{{ other_user.full_name }}</h4>
+                <p>@{{ other_user.username }} &bull; Circlo</p>
+                <span class="chat-intro-sub">This is the beginning of your direct message history with @{{ other_user.username }}.</span>
+            </div>
+            {% endfor %}
+            <div class="chat-typing-indicator" id="chat-typing-indicator" style="display: none;">
+                <span class="typing-text">@{{ other_user.username }} is typing...</span>
+            </div>
+        </div>
+
+        <!-- Chat Input Form -->
+        <form class="chat-input-bar" id="chat-form" enctype="multipart/form-data">
+            {% csrf_token %}
+            <label class="chat-file-btn" title="Attach an image">
+                <input type="file" id="chat-file-input" name="image" accept="image/*" style="display: none;">
+                <span class="icon-camera">&#128247;</span>
+            </label>
+            <div id="image-preview-chip" class="image-preview-chip" style="display: none;">
+                <span id="preview-filename">image.jpg</span>
+                <button type="button" id="remove-preview-btn" class="chip-remove">&times;</button>
+            </div>
+            <input type="text" id="chat-text-input" name="text" class="chat-text-input" placeholder="Message @{{ other_user.username }}..." autocomplete="off">
+            <button type="submit" id="chat-send-btn" class="btn btn-primary btn-sm chat-send-btn">
+                <span>Send</span>
+            </button>
+        </form>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const conversationId = {{ conversation.id }};
+    const currentUserId = {{ request.user.id }};
+    const container = document.getElementById('chat-messages-container');
+    const form = document.getElementById('chat-form');
+    const textInput = document.getElementById('chat-text-input');
+    const fileInput = document.getElementById('chat-file-input');
+    const previewChip = document.getElementById('image-preview-chip');
+    const previewFilename = document.getElementById('preview-filename');
+    const removePreviewBtn = document.getElementById('remove-preview-btn');
+    const typingIndicator = document.getElementById('chat-typing-indicator');
+    const emptyIntro = document.getElementById('chat-empty-intro');
+    const statusText = document.getElementById('status-text');
+
+    // Auto scroll to bottom
+    function scrollToBottom() {
+        container.scrollTop = container.scrollHeight;
+    }
+    scrollToBottom();
+
+    // Image preview handling
+    fileInput.addEventListener('change', () => {
+        if (fileInput.files.length > 0) {
+            previewFilename.textContent = fileInput.files[0].name;
+            previewChip.style.display = 'inline-flex';
+        }
+    });
+
+    removePreviewBtn.addEventListener('click', () => {
+        fileInput.value = '';
+        previewChip.style.display = 'none';
+    });
+
+    // WebSocket Setup
+    const wsScheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
+    const wsUrl = `${wsScheme}://${window.location.host}/ws/chat/${conversationId}/`;
+    let socket = null;
+    let typingTimer = null;
+
+    function connectWebSocket() {
+        socket = new WebSocket(wsUrl);
+
+        socket.onopen = () => {
+            statusText.textContent = 'Connected';
+            // Mark read on open
+            if (socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({ action: 'mark_read' }));
+            }
+        };
+
+        socket.onclose = () => {
+            statusText.textContent = 'Reconnecting...';
+            setTimeout(connectWebSocket, 3000);
+        };
+
+        socket.onerror = (err) => {
+            console.error('Chat WebSocket error', err);
+        };
+
+        socket.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data);
+
+                if (data.type === 'chat_message') {
+                    const msg = data.message;
+                    appendMessage(msg);
+                    if (emptyIntro) emptyIntro.style.display = 'none';
+                    scrollToBottom();
+
+                    // If message is incoming, auto mark read
+                    if (msg.sender && msg.sender.id !== currentUserId) {
+                        if (socket.readyState === WebSocket.OPEN) {
+                            socket.send(JSON.stringify({ action: 'mark_read' }));
+                        }
+                    }
+                } else if (data.type === 'typing_status') {
+                    if (data.is_typing) {
+                        typingIndicator.style.display = 'block';
+                        scrollToBottom();
+                        clearTimeout(typingTimer);
+                        typingTimer = setTimeout(() => {
+                            typingIndicator.style.display = 'none';
+                        }, 3000);
+                    } else {
+                        typingIndicator.style.display = 'none';
+                    }
+                } else if (data.type === 'messages_read') {
+                    // Update read receipt checkmarks on outgoing messages
+                    document.querySelectorAll('.chat-bubble-outgoing .chat-receipt').forEach(el => {
+                        el.classList.add('is-read');
+                        el.innerHTML = '&#10003;&#10003;';
+                        el.title = 'Read';
+                    });
+                }
+            } catch (e) {
+                console.error('Failed to parse WebSocket message', e);
+            }
+        };
+    }
+
+    connectWebSocket();
+
+    function appendMessage(msg) {
+        // Prevent duplicate append if already in DOM
+        if (document.querySelector(`[data-message-id="${msg.id}"]`)) return;
+
+        const isOutgoing = msg.sender && msg.sender.id === currentUserId;
+        const wrapper = document.createElement('div');
+        wrapper.className = `chat-bubble-wrapper ${isOutgoing ? 'chat-bubble-outgoing' : 'chat-bubble-incoming'}`;
+        wrapper.setAttribute('data-message-id', msg.id);
+
+        let imgHtml = '';
+        if (msg.image_url) {
+            imgHtml = `<div class="chat-image-wrap"><img src="${msg.image_url}" alt="Attachment" class="chat-attached-image"></div>`;
+        }
+
+        let textHtml = '';
+        if (msg.text) {
+            textHtml = `<p class="chat-text">${escapeHtml(msg.text)}</p>`;
+        }
+
+        const date = new Date(msg.created_at || Date.now());
+        const timeStr = date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+
+        let receiptHtml = '';
+        if (isOutgoing) {
+            receiptHtml = `<span class="chat-receipt ${msg.is_read ? 'is-read' : ''}" title="${msg.is_read ? 'Read' : 'Sent'}">&#10003;${msg.is_read ? '&#10003;' : ''}</span>`;
+        }
+
+        wrapper.innerHTML = `
+            <div class="chat-bubble">
+                ${imgHtml}
+                ${textHtml}
+                <div class="chat-bubble-meta">
+                    <span class="chat-time">${timeStr}</span>
+                    ${receiptHtml}
+                </div>
+            </div>
+        `;
+
+        container.insertBefore(wrapper, typingIndicator);
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // Typing emission
+    let typingBroadcastTimeout = null;
+    textInput.addEventListener('input', () => {
+        if (socket && socket.readyState === WebSocket.OPEN) {
+            if (!typingBroadcastTimeout) {
+                socket.send(JSON.stringify({ action: 'typing', is_typing: true }));
+            }
+            clearTimeout(typingBroadcastTimeout);
+            typingBroadcastTimeout = setTimeout(() => {
+                if (socket.readyState === WebSocket.OPEN) {
+                    socket.send(JSON.stringify({ action: 'typing', is_typing: false }));
+                }
+                typingBroadcastTimeout = null;
+            }, 2000);
+        }
+    });
+
+    // Form submit
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const text = textInput.value.trim();
+        const hasFile = fileInput.files.length > 0;
+
+        if (!text && !hasFile) return;
+
+        // If file attachment exists, submit via REST endpoint to handle multipart upload
+        if (hasFile) {
+            const formData = new FormData();
+            if (text) formData.append('text', text);
+            formData.append('image', fileInput.files[0]);
+
+            textInput.value = '';
+            fileInput.value = '';
+            previewChip.style.display = 'none';
+
+            try {
+                const response = await fetch(`/api/v1/conversations/${conversationId}/messages/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: formData
+                });
+                if (response.ok) {
+                    const savedMsg = await response.json();
+                    appendMessage(savedMsg);
+                    scrollToBottom();
+                }
+            } catch (err) {
+                console.error('Failed to upload image message', err);
+            }
+        } else {
+            // Text only message: send over WebSocket or fallback to REST
+            textInput.value = '';
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({
+                    action: 'send_message',
+                    text: text
+                }));
+            } else {
+                // Fallback REST POST
+                try {
+                    const response = await fetch(`/api/v1/conversations/${conversationId}/messages/`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        },
+                        body: JSON.stringify({ text: text })
+                    });
+                    if (response.ok) {
+                        const savedMsg = await response.json();
+                        appendMessage(savedMsg);
+                        scrollToBottom();
+                    }
+                } catch (err) {
+                    console.error('Failed to send text message via REST', err);
+                }
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

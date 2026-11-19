@@ -130,6 +130,18 @@ class PostService:
             return False, post.likes.count()
         else:
             PostLike.objects.create(post=post, user=user)
+            try:
+                from apps.notifications.services import NotificationService
+                NotificationService.create_notification(
+                    recipient=post.author,
+                    actor=user,
+                    verb='like_post',
+                    text='liked your post.',
+                    target_id=post.id,
+                    target_url=f"/posts/{post.id}/"
+                )
+            except Exception:
+                pass
             return True, post.likes.count()
 
     @staticmethod

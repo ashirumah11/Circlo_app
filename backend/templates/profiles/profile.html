@@ -35,6 +35,7 @@
                         <button type="submit" class="btn btn-primary btn-sm" id="btn-follow">Follow</button>
                         {% endif %}
                     </form>
+                    <a href="{% url 'messaging_web:direct-message-user' username=profile_user.username %}" class="btn btn-secondary btn-sm" id="btn-message">Message</a>
                     {% endif %}
                 </div>
             </div>

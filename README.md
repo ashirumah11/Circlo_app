@@ -45,7 +45,7 @@ The application is built as a centralized **Django web application** utilizing s
 | **Phase 3** | **Posts & Feed** | **COMPLETED** | Multiple photo/video uploads, file size & type validation, hashtag extraction, post CRUD, personalized feed, like/unlike, threaded comments & replies, 47 Automated Tests. |
 | **Phase 4** | **Social Features, Bookmarks & Search** | **COMPLETED** | Follow/unfollow, private account follow requests (accept/reject), blocking & muting, post bookmarking/saved collection, unified search (users, hashtags, posts), and trending explore feed, 62 Automated Tests. |
 | **Phase 5** | **Stories System** | **COMPLETED** | 24-hour expiring media stories (photos & videos), story tray with gradient unviewed rings, interactive full-screen story viewer with progress segments, pause on hold, and view tracking, 69 Automated Tests. |
-| **Phase 6** | **Messaging & Notifications** | Pending | One-to-one real-time chat via Django Channels, real-time push notifications. |
+| **Phase 6** | **Messaging & Notifications** | **COMPLETED** | One-to-one real-time chat via Django Channels WebSockets, real-time push notifications, typing indicators, read receipts, unread badges, and web interface, 91 Automated Tests. |
 | **Phase 7** | **Moderation & Polish** | Pending | Post and user reporting, blocking, admin tooling, rate limiting, security audit. |
 | **Phase 8** | **Mobile Readiness** | Pending | Review API consistency, token lifecycle verification, React Native documentation bundle. |
 
@@ -203,7 +203,56 @@ backend/apps/profiles/tests/test_api_profiles.py (4 tests) .......... PASSED
 - **Bookmarks:** 2 tests (toggle save, user bookmarks collection)
 - **Search & Explore:** 5 tests (user search, hashtag search, post search, explore feed, unified payload)
 - **Stories:** 7 tests (image/video story upload, feed tray grouping, 24h expiration, view recording, viewers list permissions, story deletion, story viewer UI)
+- **Direct Messaging:** 11 tests (1-to-1 conversation creation, messaging, typing indicators, read receipts, non-participant access guards, inbox and chat UI)
+- **Notifications:** 11 tests (automated triggers on likes, comments, replies, follows, mark single/all as read, unread filters, push notifications)
 - **Core & Documentation:** 3 tests (OpenAPI schema, Swagger UI, health checks)
+
+---
+
+## Phase 6 Deliverables Summary: Real-Time Messaging & Notifications
+
+### 1. Data Models (`apps/messaging/models.py` & `apps/notifications/models.py`)
+- **`Conversation`**: Direct one-to-one conversation between two users with unread counters and latest message preview.
+- **`Message`**: Individual message record with text, optional image attachments, read status, read timestamps, and recipient delivery.
+- **`Notification`**: Activity notifications for follows, follow requests, post likes, comment likes, comments, replies, story views, and direct messages.
+
+### 2. Real-Time WebSockets (`Django Channels`)
+- **`ChatConsumer` (`ws/chat/<conversation_id>/`)**:
+  - Live bi-directional chat communication.
+  - Broadcasts new incoming messages instantly.
+  - Live typing indicator (`@user is typing...`).
+  - Read receipts (`is-read` updates double-check indicators).
+- **`NotificationConsumer` (`ws/notifications/`)**:
+  - Push notification alerts directly to the active user's session without page refresh.
+  - Real-time badge counter incrementing.
+
+### 3. REST API Endpoints (`/api/v1/`)
+- `GET /api/v1/conversations/` - List user conversations with latest message & unread counts.
+- `POST /api/v1/conversations/` - Start or get existing conversation with a user.
+- `GET /api/v1/conversations/{id}/` - Retrieve conversation details.
+- `GET /api/v1/conversations/{id}/messages/` - Retrieve conversation message history.
+- `POST /api/v1/conversations/{id}/messages/` - Send a new text or image message.
+- `POST /api/v1/conversations/{id}/read/` - Mark all incoming messages in conversation as read.
+- `GET /api/v1/conversations/unread-count/` - Quick unread message counter for navigation badges.
+- `GET /api/v1/notifications/` - List user notifications (supports `?unread=true`).
+- `PATCH /api/v1/notifications/{id}/` - Mark individual notification as read.
+- `POST /api/v1/notifications/read-all/` - Mark all notifications as read.
+- `GET /api/v1/notifications/unread-count/` - Quick unread notification counter.
+
+### 4. Server-Rendered Web Pages & UI
+- **Messages Inbox** (`/messages/`):
+  - Shows all conversation threads, recipient avatar, latest message snippet, timestamp, and unread badge.
+- **Live Conversation Room** (`/messages/<id>/`):
+  - Responsive chat interface with live WebSocket messaging.
+  - Message bubble styles for sent vs. received.
+  - Image attachments preview and upload.
+  - Real-time typing indicators and double-check read receipts.
+  - "Message" button directly accessible on user profiles (`/@username/`).
+- **Notifications Center** (`/notifications/`):
+  - Notification items with actor avatar, action description, direct link to post/profile, timestamp, and unread dot.
+  - Filter tabs ("All" and "Unread").
+  - "Mark all as read" button.
+  - Live WebSocket listener that prepends new notifications in real-time.
 
 1. Start your local server:
    ```bash

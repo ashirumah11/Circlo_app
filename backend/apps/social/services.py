@@ -64,6 +64,18 @@ class SocialService:
         # Handle private account
         if target_user.is_private:
             Follow.objects.create(follower=follower, following=target_user, is_pending=True)
+            try:
+                from apps.notifications.services import NotificationService
+                NotificationService.create_notification(
+                    recipient=target_user,
+                    actor=follower,
+                    verb='follow_request',
+                    text='requested to follow you.',
+                    target_id=follower.id,
+                    target_url=f"/@{follower.username}/"
+                )
+            except Exception:
+                pass
             return {
                 'status': 'requested',
                 'is_following': False,
@@ -73,6 +85,18 @@ class SocialService:
             }
         else:
             Follow.objects.create(follower=follower, following=target_user, is_pending=False)
+            try:
+                from apps.notifications.services import NotificationService
+                NotificationService.create_notification(
+                    recipient=target_user,
+                    actor=follower,
+                    verb='follow',
+                    text='started following you.',
+                    target_id=follower.id,
+                    target_url=f"/@{follower.username}/"
+                )
+            except Exception:
+                pass
             return {
                 'status': 'following',
                 'is_following': True,
@@ -92,6 +116,20 @@ class SocialService:
 
         follow.is_pending = False
         follow.save(update_fields=['is_pending', 'updated_at'])
+
+        try:
+            from apps.notifications.services import NotificationService
+            NotificationService.create_notification(
+                recipient=follower,
+                actor=target_user,
+                verb='follow',
+                text='accepted your follow request.',
+                target_id=target_user.id,
+                target_url=f"/@{target_user.username}/"
+            )
+        except Exception:
+            pass
+
         return follow
 
     @staticmethod

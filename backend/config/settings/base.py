@@ -54,6 +54,8 @@ LOCAL_APPS = [
     'apps.bookmarks.apps.BookmarksConfig',
     'apps.search.apps.SearchConfig',
     'apps.stories.apps.StoriesConfig',
+    'apps.messaging.apps.MessagingConfig',
+    'apps.notifications.apps.NotificationsConfig',
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS

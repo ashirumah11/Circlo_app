@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block title %}Messages &bull; Circlo{% endblock %}
+
+{% block content %}
+<div class="inbox-container">
+    <div class="inbox-header">
+        <h1 class="page-title">Direct Messages</h1>
+        <div class="inbox-actions">
+            <span class="conversations-count">{{ thread_items|length }} conversation{{ thread_items|length|pluralize }}</span>
+        </div>
+    </div>
+
+    {% if thread_items %}
+    <div class="inbox-list">
+        {% for item in thread_items %}
+        <a href="{% url 'messaging_web:conversation' conversation_id=item.conversation.id %}" class="inbox-item {% if item.unread_count > 0 %}has-unread{% endif %}">
+            <div class="inbox-avatar-wrapper">
+                <img src="{{ item.other_user.avatar_url }}" alt="{{ item.other_user.username }}" class="inbox-avatar">
+                {% if item.unread_count > 0 %}
+                <span class="unread-indicator-dot"></span>
+                {% endif %}
+            </div>
+
+            <div class="inbox-item-body">
+                <div class="inbox-item-top">
+                    <span class="inbox-item-name">{{ item.other_user.full_name }}</span>
+                    <span class="inbox-item-handle">@{{ item.other_user.username }}</span>
+                    {% if item.last_message %}
+                    <span class="inbox-item-time">{{ item.last_message.created_at|timesince }} ago</span>
+                    {% endif %}
+                </div>
+
+                <div class="inbox-item-preview">
+                    {% if item.last_message %}
+                        {% if item.last_message.sender == request.user %}
+                        <span class="preview-prefix">You: </span>
+                        {% endif %}
+                        <span class="preview-text">
+                            {% if item.last_message.text %}
+                                {{ item.last_message.text|truncatechars:60 }}
+                            {% elif item.last_message.image %}
+                                📷 [Photo]
+                            {% endif %}
+                        </span>
+                    {% else %}
+                        <span class="preview-empty">No messages yet. Send a greeting!</span>
+                    {% endif %}
+
+                    {% if item.unread_count > 0 %}
+                    <span class="unread-counter-badge">{{ item.unread_count }}</span>
+                    {% endif %}
+                </div>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-icon">&#9993;</div>
+        <h3>No Messages Yet</h3>
+        <p>Send a direct message to any profile on Circlo or visit someone's profile to say hi.</p>
+        <a href="{% url 'explore' %}" class="btn btn-primary btn-sm">Find People to Chat With</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

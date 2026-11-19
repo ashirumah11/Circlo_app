@@ -15,8 +15,10 @@ from channels.auth import AuthMiddlewareStack  # noqa: E402
 from channels.routing import ProtocolTypeRouter, URLRouter  # noqa: E402
 from channels.security.websocket import AllowedHostsOriginValidator  # noqa: E402
 
-# WebSocket routing will be expanded in Phase 6 for real-time messaging and notifications
-websocket_urlpatterns = []
+from apps.messaging.routing import websocket_urlpatterns as messaging_ws_urls
+from apps.notifications.routing import websocket_urlpatterns as notifications_ws_urls
+
+websocket_urlpatterns = messaging_ws_urls + notifications_ws_urls
 
 application = ProtocolTypeRouter({
     'http': django_asgi_app,

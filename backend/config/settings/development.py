@@ -20,10 +20,26 @@ IS_TESTING = (
 )
 
 if IS_TESTING:
+    import tempfile
+    from pathlib import Path
+    test_media_dir = Path(tempfile.gettempdir()) / 'circlo_test_media'
+    test_media_dir.mkdir(parents=True, exist_ok=True)
+    MEDIA_ROOT = test_media_dir
+    STORAGES = {
+        'default': {
+            'BACKEND': 'django.core.files.storage.FileSystemStorage',
+            'OPTIONS': {
+                'location': str(test_media_dir),
+            },
+        },
+        'staticfiles': {
+            'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage',
+        },
+    }
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',  # noqa: F405
+            'NAME': ':memory:',
         }
     }
     CACHES = {
